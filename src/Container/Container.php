@@ -50,7 +50,7 @@ class Container implements ContainerInterface
             default                        => throw new RuntimeException("Service '{$id}' not found.")
         };
 
-        if ($this->shared[$id] ?? true) {
+        if ($this->shared[$id] ?? false) {
             $this->instances[$id] = $instance;
         }
 
@@ -97,7 +97,7 @@ class Container implements ContainerInterface
 
     private function isShared(string $id): bool
     {
-        return $this->shared[$id] ?? true;
+        return $this->shared[$id] ?? false;
     }
 
     public function setResolver(?ResolverInterface $resolver): void

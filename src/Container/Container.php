@@ -3,19 +3,21 @@
 /**
  * Author: Marek Baron
  * GitHub: https://www.github.com/marek-baron
- * Project: marek-baron/dependency-injector
+ * Project: marek-baron/container
  */
 
 declare(strict_types=1);
 
 namespace MarekBaron\Container;
 
+use MarekBaron\Container\Exception\ContainerException;
+use MarekBaron\Container\Exception\NotFoundException;
 use Psr\Container\ContainerInterface;
-use RuntimeException;
+use Psr\Container\NotFoundExceptionInterface;
+use Throwable;
 
 class Container implements ContainerInterface
 {
-    private ?ResolverInterface $resolver = null;
     private array $factories = [];
     private array $services = [];
     private array $invokables = [];
@@ -43,12 +45,23 @@ class Container implements ContainerInterface
             return $this->services[$id];
         }
 
-        $instance = match (true) {
-            isset($this->factories[$id])  => $this->createFromFactory($id),
-            isset($this->invokables[$id]) => $this->createFromInvokable($id),
-            $this->resolver !== null       => $this->resolver->resolve($this, $id),
-            default                        => throw new RuntimeException("Service '{$id}' not found.")
-        };
+        try {
+            $instance = match (true) {
+                isset($this->factories[$id])  => $this->createFromFactory($id),
+                isset($this->invokables[$id]) => $this->createFromInvokable($id),
+                default                        => throw new NotFoundException(
+                    sprintf('Service %s not found.', $id)
+                )
+            };
+        } catch (NotFoundExceptionInterface $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new ContainerException(
+                sprintf('Error while retrieving the entry %s.', $id),
+                0,
+                $e
+            );
+        }
 
         if ($this->shared[$id] ?? false) {
             $this->instances[$id] = $instance;
@@ -64,8 +77,7 @@ class Container implements ContainerInterface
         return isset($this->instances[$id])
             || isset($this->services[$id])
             || isset($this->factories[$id])
-            || isset($this->invokables[$id])
-            || class_exists($id);
+            || isset($this->invokables[$id]);
     }
 
     private function createFromFactory(string $id): mixed
@@ -81,7 +93,7 @@ class Container implements ContainerInterface
             return $factoryInstance($this, $id);
         }
 
-        throw new RuntimeException("Invalid factory for '{$id}'");
+        throw new ContainerException(sprintf('Invalid factory for %s.', $id));
     }
 
     private function createFromInvokable(string $id): mixed
@@ -89,7 +101,7 @@ class Container implements ContainerInterface
         $class = $this->invokables[$id];
 
         if (!class_exists($class)) {
-            throw new RuntimeException("Invokable class '{$class}' not found.");
+            throw new NotFoundException(sprintf('Invokable class %s not found.', $class));
         }
 
         return new $class();
@@ -98,10 +110,5 @@ class Container implements ContainerInterface
     private function isShared(string $id): bool
     {
         return $this->shared[$id] ?? false;
-    }
-
-    public function setResolver(?ResolverInterface $resolver): void
-    {
-        $this->resolver = $resolver;
     }
 }

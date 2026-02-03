@@ -106,9 +106,4 @@ class Container implements ContainerInterface
 
         return new $class();
     }
-
-    private function isShared(string $id): bool
-    {
-        return $this->shared[$id] ?? false;
-    }
 }

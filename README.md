@@ -128,7 +128,7 @@ A Dockerfile and docker-compose.yml are included for local development.
 They are excluded from Packagist via .gitattributes.
 
 ```bash
-docker compose run --rm dev composer check
+docker compose run --rm container-dev composer check
 ```
 
 ## License
